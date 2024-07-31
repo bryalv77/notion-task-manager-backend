@@ -1,4 +1,9 @@
-import { Handler } from "@netlify/functions";
+import {
+  Handler,
+  HandlerEvent,
+  HandlerContext,
+  HandlerResponse,
+} from "@netlify/functions";
 import axios from "axios";
 import * as dotenv from "dotenv";
 
@@ -9,8 +14,24 @@ const notionApiBaseUrl = process.env.NOTION_API_BASE_URL || "";
 const notionDatabaseId = process.env.NOTION_DATABASE_ID || "";
 const notionToken = process.env.NOTION_TOKEN || "";
 
-const getTasks: Handler = async (event, context) => {
+const handler: Handler = async (
+  event: HandlerEvent,
+  context: HandlerContext
+): Promise<HandlerResponse> => {
   try {
+    // Handle preflight requests for CORS
+    if (event.httpMethod === "OPTIONS") {
+      return {
+        statusCode: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Authorization, Content-Type",
+        },
+        body: "",
+      };
+    }
+
     // Authenticate user
     const isAuthenticated = await authenticateUser(
       event.headers["authorization"] || ""
@@ -18,6 +39,9 @@ const getTasks: Handler = async (event, context) => {
     if (!isAuthenticated) {
       return {
         statusCode: 401,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
         body: JSON.stringify({ error: "Unauthorized" }),
       };
     }
@@ -34,6 +58,9 @@ const getTasks: Handler = async (event, context) => {
       default:
         return {
           statusCode: 405,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+          },
           body: JSON.stringify({ error: "Method Not Allowed" }),
         };
     }
@@ -41,6 +68,9 @@ const getTasks: Handler = async (event, context) => {
     console.error("Error:", error);
     return {
       statusCode: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify({ error: "Internal Server Error" }),
     };
   }
@@ -64,7 +94,7 @@ const authenticateUser = async (authHeader: string): Promise<boolean> => {
   return users[username] === password;
 };
 
-const fetchTasks = async () => {
+const fetchTasks = async (): Promise<HandlerResponse> => {
   try {
     const response = await axios.post(
       `${notionApiBaseUrl}/databases/${notionDatabaseId}/query`,
@@ -79,18 +109,25 @@ const fetchTasks = async () => {
     );
     return {
       statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify(response.data),
     };
   } catch (error) {
+    console.log("error: ", error);
     console.error("Error fetching tasks:", error);
     return {
       statusCode: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify({ error: "Error fetching tasks" }),
     };
   }
 };
 
-const addTask = async (taskData: any) => {
+const addTask = async (taskData: any): Promise<HandlerResponse> => {
   try {
     const response = await axios.post(
       `${notionApiBaseUrl}/pages`,
@@ -119,18 +156,24 @@ const addTask = async (taskData: any) => {
     );
     return {
       statusCode: 201,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify(response.data),
     };
   } catch (error) {
     console.error("Error adding task:", error);
     return {
       statusCode: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify({ error: "Error adding task" }),
     };
   }
 };
 
-const removeTask = async (taskData: any) => {
+const removeTask = async (taskData: any): Promise<HandlerResponse> => {
   try {
     const response = await axios.patch(
       `${notionApiBaseUrl}/pages/${taskData.id}`,
@@ -147,18 +190,24 @@ const removeTask = async (taskData: any) => {
     );
     return {
       statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify(response.data),
     };
   } catch (error) {
     console.error("Error removing task:", error);
     return {
       statusCode: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify({ error: "Error removing task" }),
     };
   }
 };
 
-const updateTask = async (taskData: any) => {
+const updateTask = async (taskData: any): Promise<HandlerResponse> => {
   try {
     const response = await axios.patch(
       `${notionApiBaseUrl}/pages/${taskData.id}`,
@@ -186,15 +235,21 @@ const updateTask = async (taskData: any) => {
     );
     return {
       statusCode: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify(response.data),
     };
   } catch (error) {
     console.error("Error updating task:", error);
     return {
       statusCode: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       body: JSON.stringify({ error: "Error updating task" }),
     };
   }
 };
 
-export { getTasks };
+export { handler };
